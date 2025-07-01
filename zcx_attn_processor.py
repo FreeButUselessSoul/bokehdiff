@@ -1,5 +1,4 @@
-#################################################
-
+# This module implements the PISA module. @Chengxuan Zhu
 import inspect
 import math
 from importlib import import_module
@@ -28,13 +27,6 @@ if is_xformers_available():
     import xformers.ops
 else:
     xformers = None
-
-def gamma_correction(image: torch.Tensor, gamma: float = 2.2, eps=1e-7):
-    if gamma == 1:
-        return image
-    sign = torch.sign(image)
-    return sign*(torch.abs(image)+eps)**gamma
-    # return 2*(torch.clamp(image*.5+.5,eps,1).pow(gamma)) - 1
 
 def customized_scaled_dot_product_attention(query, key, value, weight_matrix=None, disp_coc=None,
                     attn_mask=None, dropout_p=0.0, is_causal=False, scale=None,
@@ -71,10 +63,8 @@ def customized_scaled_dot_product_attention(query, key, value, weight_matrix=Non
         attn_weight_qk = torch.exp(attn_weight_qk-attn_weight_qk_max)
         attn_weight = attn_weight_qk*attn_weight_manual
         attn_weight = attn_weight/((torch.sum(attn_weight, dim=-2, keepdim=True)))
-        # attn_weight = make_doubly_stochastic(attn_weight) #* (1-mask)
         attn_weight_drop = torch.dropout(attn_weight* (1-mask), dropout_p, train=True)
         return attn_weight_drop.to(value.dtype) @ value
-        # return gamma_correction(attn_weight_drop.to(value.dtype) @ gamma_correction(value), 1/2.2)
         
 class AttnProcessorDistReciprocal:
     r"""
@@ -84,7 +74,7 @@ class AttnProcessorDistReciprocal:
     """
     def __init__(self, hard: float = 3, supersampling_num: int = 4, segment_num: int = 4, train: bool = True):
         '''
-        hard: the current "hardness" of the soft step function. Default: 3.
+        hard: the current "hardness" of the soft step function. Default: 3. should increase as the training goes
         supersampling_num: the number of supersampling per pixel, to get an accurate mask. Default: 4.
         segment_num: the number of sampling along the ray from camera to 3D position. Default: 4.
         '''
@@ -118,11 +108,7 @@ class AttnProcessorDistReciprocal:
         
         len_hidden = int((disp_coc.shape[-1]*disp_coc.shape[-2]/hidden_states.shape[1])**.5)
         shape = [disp_coc.shape[-2]//len_hidden, disp_coc.shape[-1]//len_hidden]
-        # energy = F.interpolate(energy, shape, mode='bilinear', align_corners=False).flatten(-2,-1)[...,None]
         disp_highres = F.interpolate(disp_coc, size=(shape[0]*3,shape[1]*3), mode='bilinear', align_corners=False)
-        # scaler = 3
-        # disp_coc = disp_highres.unfold(-2,scaler,scaler).unfold(-2,scaler,scaler).min(-2)[0].min(-1)[0] # MIN-DOWNSAMPLE
-        # assert disp_coc.shape[-2:] == shape, f"Got size {disp_coc.shape}, expected {shape} for disp_coc."
         disp_coc = F.interpolate(disp_coc, size=shape, mode='bilinear', align_corners=False)
         # disp_lowres = disp_coc[:,0].clone()
         disp_coc = disp_coc.flatten(2,3)
@@ -139,15 +125,20 @@ class AttnProcessorDistReciprocal:
             with torch.no_grad():
                 for ind,disp in enumerate(disp_highres[:,0]):
                     disp_ravel = disp_coc[ind,[0]][None] # disp_lowres.flatten(-2,-1)[None] # (1, 1, h*w)
-                    disp_ps = disp_ravel[0,0][None,:,None]*ps[:,None,None]+(1-ps[:,None,None])
-                    # P_locs = ((disp_ps - disp_ravel[:, None])/(1+disp_ps)*1-(1-disp_ps)*(1+disp_ravel[:, None]))[..., None] * index_ij[None] + \
-                    #         ((1-disp_ps)*(1+disp_ravel[:, None])/(1+disp_ps)*1-(1-disp_ps)*(1+disp_ravel[:, None]))[..., None] * index_ij[:, None]
-                    # import ipdb;ipdb.set_trace()
-                    P_locs = (((1-disp_ps) * disp_ravel)/(disp_ps*(1-disp_ravel)))[...,None]*(index_ij[None,None,:,:]-index_ij[None,:,None,:]) + index_ij[None,:,None,:]
+                    disp_ps = disp_ravel[0,0][None,:,None]*ps[:,None,None] + \
+                            (1-ps[:,None,None]) # sample from the point to the camera (disp=1)
+                    P_locs = (((1-disp_ps) * disp_ravel)/(disp_ps*(1-disp_ravel)))[...,None]* \
+                            (index_ij[None,None,:,:]-index_ij[None,:,None,:]) + \
+                            index_ij[None,:,None,:]
                     if self.supersampling_num > 1:
-                        P_locs = torch.cat([P_locs, (P_locs[None]+(torch.rand((self.supersampling_num-1,*P_locs.shape), device=P_locs.device)-0.5)*2/shape[0]).reshape(-1, *P_locs.shape[1:])], 0)
-                    # actual_disp_ps = F.grid_sample(disp[None, None].repeat(self.supersampling_num,len(P_locs),1,1,1), P_locs, align_corners=False)
-                    # actual_disp_ps = F.grid_sample(disp[None,None], P_locs.reshape(1,-1,*P_locs.shape[-2:]), align_corners=False)
+                        P_locs = torch.cat([
+                            P_locs, 
+                            (P_locs[None]+(
+                                torch.rand(
+                                    (self.supersampling_num-1,*P_locs.shape), 
+                                    device=P_locs.device
+                                )-0.5)*2/shape[0]
+                            ).reshape(-1, *P_locs.shape[1:])], 0)
                     actual_disp_ps = F.grid_sample(disp[None,None].repeat(len(P_locs),1,1,1), P_locs, align_corners=False)
                     actual_disp_ps = actual_disp_ps.reshape(self.supersampling_num, -1, 1, *P_locs.shape[1:-1])
                     occ_map.append(torch.mean((((actual_disp_ps - disp_ps[None,:,None,None,:,0] > 0)).sum(axis=1) > 0).float(), 0))
@@ -171,8 +162,6 @@ class AttnProcessorDistReciprocal:
                     torch.pow(i_ravel[:, None] - i_ravel[None, :], 2) + 
                     torch.pow(j_ravel[:, None] - j_ravel[None, :], 2)) * cutoff
             else:
-                # if shape[0]*shape[1] != hidden_states.shape[1]:
-                #     raise NotImplementedError("Reciprocal distance for 1D array not implemented.")
                 i_ravel, j_ravel = torch.meshgrid(
                     torch.linspace(0,1,shape[0]).to(hidden_states.device), 
                     torch.linspace(0,1,shape[1]).to(hidden_states.device), indexing="ij")
@@ -208,9 +197,6 @@ class AttnProcessorDistReciprocal:
         query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
         key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
         value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-
-        # the output of sdp = (batch, num_heads, seq_len, head_dim)
-        # TODO: add support for attn.scale when we move to Torch 2.1
         
         if enable_dist:
             hidden_states = customized_scaled_dot_product_attention(
@@ -219,8 +205,8 @@ class AttnProcessorDistReciprocal:
                 occ_map=occ_map, train=self.train,
             )
             if self.hard < 1e6:
-                self.hard += 1
-        else: # Falling to vanilla attention
+                self.hard += 1 # harder
+        else: # vanilla attention
             hidden_states = F.scaled_dot_product_attention(query, key, value, attn_mask=attention_mask, dropout_p=0.0, is_causal=False)
         hidden_states = hidden_states.transpose(1, 2).reshape(batch_size, -1, attn.heads * head_dim)
         hidden_states = hidden_states.to(query.dtype)
