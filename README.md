@@ -52,13 +52,12 @@ python train_lora_otf.py --train_data_dir <data_root> \
 
 ## Citation
 If you find our work useful to your research, please cite our paper as:
-IEEE InternationalConference on Computer Vision
 ```
 @inproceedings{zhu2025bokehdiff,
-  title = {BokehDiff: When Neural Rendering Meets Classical Rendering},
+  title = {BokehDiff: Neural Lens Blur with One-Step Diffusion},
   author = {Zhu, Chengxuan and Fan, Qingnan and Zhang, Qi and Chen, Jinwei and Zhang, Huaqi and Xu, Chao and Shi, Boxin},
-  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year = {2022}
+  booktitle = {IEEE International Conference on Computer Vision},
+  year = {2025}
 }
 ```
 Feel free to [contact me](https://freebutuselesssoul.github.io/) if you're also interested in the possibility of combining AIGC with photography.
