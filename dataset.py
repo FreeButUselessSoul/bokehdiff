@@ -70,7 +70,6 @@ class OnTheFlyDataset(Dataset):
     def __init__(
         self,
         data_root,
-        learnable_property="style",  # [object, style]
         size=512,
         interpolation="bicubic",
         flip_p=0.5,
@@ -84,7 +83,6 @@ class OnTheFlyDataset(Dataset):
         self.device = device
         self.split=split
         self.data_root = data_root
-        self.learnable_property = learnable_property
         self.size = size
         self.center_crop = center_crop
         self.flip_p = flip_p

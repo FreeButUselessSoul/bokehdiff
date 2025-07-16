@@ -227,7 +227,6 @@ def parse_args():
     )
     parser.add_argument(
         "--opt_vae", type=int, default=1, help="Whether to optimize the VAE.")
-    parser.add_argument("--learnable_property", type=str, default="style", help="Choose between 'object' and 'style'")
     parser.add_argument("--repeats", type=int, default=1, help="How many times to repeat the training data.")
     parser.add_argument(
         "--output_dir",
@@ -637,7 +636,6 @@ def main():
     train_dataset = OnTheFlyDataset(
         data_root=args.train_data_dir,
         size=args.resolution, 
-        learnable_property=args.learnable_property,
         center_crop=args.center_crop,
         split="train",
         device=accelerator.device,
