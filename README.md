@@ -13,8 +13,9 @@ The dataset synthesis is now performed on-the-fly, which means it only needs to 
 ## Quick start
 To initiate the environment, run the following scripts
 ```bash
-conda create -n bokehdiff python=3.10 peft transformers diffusers kornia pillow scikit-image piq lpips accelerate safetensors cupy xformers -c pytorch -c nvidia -c conda-forge
+conda create -n bokehdiff python=3.10 peft transformers kornia pillow scikit-image piq lpips accelerate safetensors cupy xformers -c pytorch -c nvidia -c conda-forge
 conda activate bokehdiff
+pip install diffusers==0.32.1
 pip install uv
 uv pip install torch torchvision
 ```

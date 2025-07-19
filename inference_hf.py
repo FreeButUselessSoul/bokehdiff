@@ -64,7 +64,6 @@ def fn_recursive_attn_processor(name: str, module: torch.nn.Module, processor):
         for sub_name, child in module.named_children():
             fn_recursive_attn_processor(f"{name}.{sub_name}", child, processor)
 
-from wavelet_fix import *
 import time
 
 @torch.inference_mode()
@@ -301,9 +300,7 @@ def main():
             torch.load(os.path.join(path, "vae.ckpt"), weights_only=True),
             strict=False)
     else:
-        print("Using pretrained models from HugggingFace...")
-        path = args.resume_from_checkpoint
-        accelerator.print(f"Resuming from checkpoint {path}")
+        print("Using pretrained models from HuggingFace...")
         pipeline.load_lora_weights("zcx65535/bokehdiff", variant=args.variant)
         vae_state_dict = torch.hub.load_state_dict_from_url(
             f"http://hf-mirror.com/zcx65535/bokehdiff/resolve/main/{args.variant}/vae.ckpt",

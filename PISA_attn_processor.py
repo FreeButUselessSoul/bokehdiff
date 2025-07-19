@@ -9,13 +9,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from diffusers.image_processor import IPAdapterMaskProcessor
 from diffusers.utils import deprecate, logging
 from diffusers.utils.import_utils import is_torch_npu_available, is_xformers_available
 from diffusers.utils.torch_utils import maybe_allow_in_graph
-from diffusers.models.lora import LoRALinearLayer
 from diffusers.models.attention_processor import Attention
-from utils_zcx import make_doubly_stochastic
 
 logger = logging.get_logger(__name__)
 
