@@ -17,6 +17,7 @@ To initiate the environment, run the following scripts
 ```bash
 conda create -n bokehdiff python=3.10 peft transformers kornia pillow scikit-image piq lpips accelerate safetensors cupy xformers -c pytorch -c nvidia -c conda-forge
 conda activate bokehdiff
+cd vision-aided-gan-main; pip install -e . ; cd ..
 pip install diffusers==0.32.1
 pip install uv
 uv pip install torch torchvision
