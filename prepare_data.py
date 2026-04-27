@@ -1,5 +1,4 @@
 import os
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 import torch
 import numpy as np
 from transformers import pipeline
@@ -34,7 +33,7 @@ with torch.no_grad():
         depth = pipe(image)["predicted_depth"]
         depth = depth.squeeze().cpu().numpy()
         disparity = 1-((depth - depth.min()) / (depth.max() - depth.min()))
-        np.save(os.path.join(depth_dir, impath.replace(".jpg", "_pred.npy")), disparity)
+        np.save(os.path.join(depth_dir, os.path.splitext(impath)[0] + "_pred.npy"), disparity)
     del pipe # Free memory
 
     # Predict the salient mask with BiRefNet
@@ -51,7 +50,7 @@ with torch.no_grad():
         imsize = image.size
         input_images = transform_image(image).unsqueeze(0).to(device)
         mask = np.uint8(255*birefnet(input_images)[-1].sigmoid().cpu()[0].squeeze().numpy())
-        Image.fromarray(mask).resize(imsize, resample=Image.Resampling.LANCZOS).save(os.path.join(mask_dir, impath.replace(".jpg", ".png")))
+        Image.fromarray(mask).resize(imsize, resample=Image.Resampling.LANCZOS).save(os.path.join(mask_dir, os.path.splitext(impath)[0] + ".png"))
     del birefnet  # Free memory
 
 print(f"Data preparation completed for {args.root} successfully.")

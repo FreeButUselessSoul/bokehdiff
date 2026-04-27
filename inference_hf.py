@@ -1,8 +1,7 @@
 import argparse
 import logging
 import math
-import os 
-os.environ['HF_ENDPOINT'] = 'http://hf-mirror.com'
+import os
 import random
 import pandas as pd
 import shutil
@@ -303,7 +302,7 @@ def main():
         print("Using pretrained models from HuggingFace...")
         pipeline.load_lora_weights("zcx65535/bokehdiff", variant=args.variant)
         vae_state_dict = torch.hub.load_state_dict_from_url(
-            f"http://hf-mirror.com/zcx65535/bokehdiff/resolve/main/{args.variant}/vae.ckpt",
+            f"https://huggingface.co/zcx65535/bokehdiff/resolve/main/{args.variant}/vae.ckpt",
             map_location="cpu", check_hash=True, weights_only=True)
         pipeline.vae.load_state_dict(vae_state_dict, strict=False)
 

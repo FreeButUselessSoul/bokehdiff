@@ -3,8 +3,6 @@ import argparse
 import logging
 import math
 import os
-
-os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 import random
 import shutil
 from pathlib import Path
